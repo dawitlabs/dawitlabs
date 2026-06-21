@@ -9,6 +9,27 @@ jobs:
   update-readme:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Fetch WakaTime total hours
+        id: wakatime
+        run: |
+          TOTAL=$(curl -s "https://wakatime.com/api/v1/users/current/all_time_since_today" \
+            -H "Authorization: Basic $(echo -n '${{ secrets.WAKATIME_API_KEY }}' | base64 -w 0)" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin)['data']; print(d['text'])")
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "{\"schemaVersion\":1,\"label\":\"wakatime\",\"message\":\"$TOTAL\",\"color\":\"007ec6\"}" > wakatime.json
+
+      - name: Commit badge JSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add wakatime.json
+          git diff --cached --quiet || git commit -m "update wakatime badge"
+          git push
+
       - uses: athul/waka-readme@master
         with:
           WAKATIME_API_KEY: ${{ secrets.WAKATIME_API_KEY }}
